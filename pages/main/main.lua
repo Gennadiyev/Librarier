@@ -19,7 +19,7 @@ local EventTemplate = require("stringjson")
 local json = require("dkjson")
 EventTemplate = json.decode(EventTemplate)
 -- 读入更新日志
-local UpdateLog = require("updatelog")
+local UpdateLog = require("updatelog") 
 
 -- @param data 侧滑栏列表的全部数据
 -- @param recyclerView 侧滑栏列表控件
