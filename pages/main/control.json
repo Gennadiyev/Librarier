@@ -1,0 +1,1 @@
+[{"host":"notes.sjtu.edu.cn","removes":".ui-infobar,.ui-toc,.ui-affix-toc,.navbar-fixed-top"},{"host":"booking.lib.sjtu.edu.cn","removes":".fixed-top,#footer"},{"host":"studyroom.lib.sjtu.edu.cn","removes":".header_bg1,.footer_bg,.tabs"}]
