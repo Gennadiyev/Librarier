@@ -14,7 +14,7 @@ import "android.R$id"
 import "android.content.Intent"
 import "android.net.Uri"
 
--- 读入活动列表
+-- 读入活动信息列表
 local EventTemplate = require("stringjson")
 local json = require("dkjson")
 EventTemplate = json.decode(EventTemplate)
@@ -37,7 +37,6 @@ end
 -- @param title 点击的菜单标题
 -- @description 顶栏菜单项目点击回调事件
 function onMenuItemClick(title)
-  --TODO：onMenuItemClick
   if title == "刷新" then
     local uiManager=activity.getUiManager()
     local wv=uiManager.getCurrentFragment().getWebView()
@@ -52,21 +51,14 @@ function onMenuItemClick(title)
   end
 end
 
-local uimanager=activity.uiManager
-local fragment=uimanager.currentFragment
+local uiManager=activity.uiManager
+local fragment=uiManager.getFragment(4)
 fragment.setWebInterface(WebInterface{
   onPageFinished=function(view,url)
     onFloatingActionButtonClick(nil, true)
   end,
   onPageStarted=function(view,url,favicon)
-    --页面开始加载事件
-  end,
-  onLoadResource=function(view,url)
-    --页面资源加载监听
-    --可通过该方法获取网页上的资源
-  end,
-  onUrlLoad=function(view,url)
-    if url:find("index%.asp") and url:find("studyroom") then
+    if url:find("/index") and url:find("studyroom") then -- http://studyroom.lib.sjtu.edu.cn/index.asp
       local uiManager=activity.getUiManager()
       local wv=uiManager.getCurrentFragment().getWebView()
       wv.loadUrl("http://studyroom.lib.sjtu.edu.cn/apply.asp")
@@ -74,10 +66,38 @@ fragment.setWebInterface(WebInterface{
     end
     return false
   end,
+  onUrlLoad=function(view,url)
+  end,
   onReceivedSslError=function(view, sslErrorHandler, sslError)
     return false
   end
 })
+
+fragment=uiManager.getFragment(0)
+fragment.setWebInterface(WebInterface{
+  onPageFinished=function(view,url)
+    onFloatingActionButtonClick(nil, true)
+  end,
+  onPageStarted=function(view,url,favicon)
+    if url:find("/my") and url:find("booking") then -- http://booking.lib.sjtu.edu.cn/my.asp
+      local uiManager=activity.getUiManager()
+      local wv=uiManager.getCurrentFragment().getWebView()
+      wv.loadUrl("http://booking.lib.sjtu.edu.cn/")
+      local viewPager=uiManager.viewPager
+      viewPager.setCurrentItem(1)
+      wv=uiManager.getFragment(1).getWebView()
+      wv.reload()
+      return true
+    end
+    return false
+  end,
+  onUrlLoad=function(view,url)
+  end,
+  onReceivedSslError=function(view, sslErrorHandler, sslError)
+    return false
+  end
+})
+
 
 --悬浮按钮点击事件
 function onFloatingActionButtonClick(v, foo)
