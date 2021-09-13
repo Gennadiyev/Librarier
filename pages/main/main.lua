@@ -13,6 +13,34 @@ import "android.view.View"
 import "android.R$id"
 import "android.content.Intent"
 import "android.net.Uri"
+import "java.net.NetworkInterface"
+import "java.util.Collections"
+import "java.util.Enumeration"
+import "java.util.Iterator"
+import "android.content.Context"
+import "android.content.ClipData"
+
+local clipboard = this.getSystemService(Context.CLIPBOARD_SERVICE)
+local function copyToClipboard(str)
+  clipboard.setPrimaryClip(ClipData.newPlainText("Message", str))
+end
+local function getFromClipboard()
+  return clipboard.getPrimaryClip().getItemAt(0).getText()
+end
+
+local function isVpnConnected()
+  local interfaceList = NetworkInterface.getNetworkInterfaces()
+  local it = Collections.list(interfaceList).iterator()
+  while (it.hasNext())
+    local interface = it.next()
+    if interface.isUp() and interface.getInterfaceAddresses().size() > 0 then
+      if interface.getName() == "tun0" or interface.getName() == "ppp0" then
+        return true
+      end
+    end
+  end
+  return false
+end
 
 -- 读入活动信息列表
 local EventTemplate = require("stringjson")
@@ -52,27 +80,6 @@ function onMenuItemClick(title)
 end
 
 local uiManager=activity.uiManager
-local fragment=uiManager.getFragment(4)
-fragment.setWebInterface(WebInterface{
-  onPageFinished=function(view,url)
-    onFloatingActionButtonClick(nil, true)
-  end,
-  onPageStarted=function(view,url,favicon)
-    if url:find("/index") and url:find("studyroom") then -- http://studyroom.lib.sjtu.edu.cn/index.asp
-      local uiManager=activity.getUiManager()
-      local wv=uiManager.getCurrentFragment().getWebView()
-      wv.loadUrl("http://studyroom.lib.sjtu.edu.cn/apply.asp")
-      return true
-    end
-    return false
-  end,
-  onUrlLoad=function(view,url)
-  end,
-  onReceivedSslError=function(view, sslErrorHandler, sslError)
-    return false
-  end
-})
-
 fragment=uiManager.getFragment(0)
 fragment.setWebInterface(WebInterface{
   onPageFinished=function(view,url)
@@ -98,12 +105,74 @@ fragment.setWebInterface(WebInterface{
   end
 })
 
+local fragment=uiManager.getFragment(3)
+fragment.setWebInterface(WebInterface{
+  onPageFinished=function(view,url)
+    onFloatingActionButtonClick(nil, true)
+  end,
+  onPageStarted=function(view,url,favicon)
+    if url:find("/index") and url:find("studyroom") then -- http://studyroom.lib.sjtu.edu.cn/index.asp
+      local uiManager=activity.getUiManager()
+      local wv=uiManager.getCurrentFragment().getWebView()
+      wv.loadUrl("http://studyroom.lib.sjtu.edu.cn/apply.asp")
+      return true
+    end
+    return false
+  end,
+  onUrlLoad=function(view,url)
+  end,
+  onReceivedSslError=function(view, sslErrorHandler, sslError)
+    return false
+  end
+})
+
+local fragment=uiManager.getFragment(4)
+fragment.setWebInterface(WebInterface{
+  onPageFinished=function(view,url)
+    onFloatingActionButtonClick(nil, true)
+  end,
+  onPageStarted=function(view,url,favicon)
+    if url:find("/index") and url:find("studyroom") then -- http://studyroom.lib.sjtu.edu.cn/index.asp
+      local uiManager=activity.getUiManager()
+      local wv=uiManager.getCurrentFragment().getWebView()
+      wv.loadUrl("http://studyroom.lib.sjtu.edu.cn/apply.asp")
+      return true
+    end
+    return false
+  end,
+  onUrlLoad=function(view,url)
+  end,
+  onReceivedSslError=function(view, sslErrorHandler, sslError)
+    return false
+  end
+})
+
+local fragment=uiManager.getFragment(5)
+fragment.setWebInterface(WebInterface{
+  onPageFinished=function(view,url)
+    onFloatingActionButtonClick(nil, true)
+  end,
+  onPageStarted=function(view,url,favicon)
+    if url:find("/index") and url:find("studyroom") then -- http://studyroom.lib.sjtu.edu.cn/index.asp
+      local uiManager=activity.getUiManager()
+      local wv=uiManager.getCurrentFragment().getWebView()
+      wv.loadUrl("http://studyroom.lib.sjtu.edu.cn/apply.asp")
+      return true
+    end
+    return false
+  end,
+  onUrlLoad=function(view,url)
+  end,
+  onReceivedSslError=function(view, sslErrorHandler, sslError)
+    return false
+  end
+})
 
 --悬浮按钮点击事件
 function onFloatingActionButtonClick(v, foo)
   local uiManager=activity.getUiManager()
   local wv=uiManager.getCurrentFragment().getWebView()
-  if wv.getUrl():find("zg") then
+  if wv.getUrl():find("zg") and wv.getUrl():find("booking") then
     -- 弹出对话框请求用户手机号
     createSnackbar("快捷方式 - 预约主馆", "执行", function()
       local dialog=MaterialAlertDialogBuilder(activity)
@@ -149,8 +218,50 @@ function onFloatingActionButtonClick(v, foo)
       })
       dialog.show()
     end)
-
-   elseif wv.getUrl():find("lzd") then
+   elseif wv.getUrl():find("user_reserve_list") then
+    
+    createSnackbar("快捷方式 - 转成 Markdown", "转换", function()
+      local str = getFromClipboard()
+      local function parse(s)
+        local function expl(inputstr, sep)
+          if not(sep) then
+            sep = "%s"
+          end
+          local t = {}
+          for str in string.gmatch(inputstr, "([^"..sep.."]+)") do
+            t[#t + 1] = str
+          end
+          return t
+        end
+        local l = expl(s, "\n")
+        local c = 0
+        local o = "| 申请号 | 图书馆 | 房间 | 开始时间 | 结束时间 | 预约人 | 密码 | Status |\n| ------ | ------------ | ---- | ------------------ | ------------------ | ------ | ------ | -------- |\n"
+        for i = 1, #l do
+	      local info = l[i]
+	      if #info > 30 then
+		    local infoSeg = expl(info, "\t")
+            if infoSeg and #infoSeg > 7 then
+  		      if l[i]:find("等待加入") then
+		  	    c = c + 1
+                o = o .. string.format("| %s | %s | %s | %s | %s | %s | %s | %s |\n",
+		      infoSeg[2], infoSeg[4], infoSeg[5], infoSeg[7], infoSeg[8], infoSeg[9], infoSeg[#infoSeg - 1]:sub(-7, -2), ":accept:")
+		      end
+            end
+          end
+	    end
+        return o, c
+      end
+      local outStr, count = parse(str)
+      print(count)
+      if count >= 1 then
+        copyToClipboard(outStr)
+        createSnackbar(string.format("已复制：%d 个未完成预约", count))
+      else
+        createSnackbar("剪贴板上没有未完成的预约")
+      end
+    end)
+   
+   elseif wv.getUrl():find("lzd") and wv.getUrl():find("booking") then
     createSnackbar("快捷方式 - 预约李政道图书馆", "执行", function()
       local dialog=MaterialAlertDialogBuilder(activity)
       dialog.setTitle("输入预约用手机号")
@@ -193,7 +304,7 @@ function onFloatingActionButtonClick(v, foo)
       })
       dialog.show()
     end)
-   elseif wv.getUrl():find("byg") then
+   elseif wv.getUrl():find("byg") and wv.getUrl():find("booking") then
     createSnackbar("快捷方式 - 预约包玉刚图书馆", "执行", function()
       local dialog=MaterialAlertDialogBuilder(activity)
       dialog.setTitle("输入预约用手机号")
@@ -244,7 +355,7 @@ function onFloatingActionButtonClick(v, foo)
       local viewIntent = Intent("android.intent.action.VIEW", Uri.parse(url))
       activity.startActivity(viewIntent)
     end)
-   elseif wv.getUrl():find("reserve") then
+   elseif wv.getUrl():find("reserve") and not(wv.getUrl():find("user_reserve")) and not(wv.getUrl():find("reserve_plus")) then
     createSnackbar("快捷方式 - 随机填写申请", "执行", function()
       local event = EventTemplate[math.random(1, #EventTemplate)]
       wv.evaluateJavascript(luajava.tostring(string.format([[
@@ -260,6 +371,21 @@ function onFloatingActionButtonClick(v, foo)
           return
         end
       }))
+    end)
+   elseif wv.getUrl():find("apply%.asp") then
+    createSnackbar("快捷方式：设置时间 18:00~22:00", "搜索", function()
+      wv.evaluateJavascript(luajava.tostring([[
+        $("[name='tend']")[0].value="22:00";
+        $("[name='tstart']")[0].value="18:00";
+        $("input[type=\"submit\"]")[0].click();
+      ]]),
+        ValueCallback({
+          onReceiveValue = function(s)
+          -- 返回值 Discarded
+          return
+        end
+        })
+      )
     end)
    elseif not(foo) then
     createSnackbar("本页无快捷方式", "OK", function() end)
@@ -292,6 +418,8 @@ function onDrawerListItemClick(data, recyclerView, listIndex, itemIndex)
       end
     })
     dialog.show()
+  elseif itemTitle == "退出" then
+    activity.finish()
   end
 end
 
